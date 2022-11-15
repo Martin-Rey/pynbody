@@ -634,7 +634,7 @@ class AHFCatalogue(HaloCatalogue):
             # and a second one again below
 
             if os.path.isdir(sim._filename):
-                candidates.union(glob.glob(os.path.join(
+                candidates = candidates.union(glob.glob(os.path.join(
                     sim._filename,
                     "*z*particles*"
                 )))
