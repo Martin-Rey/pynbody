@@ -118,3 +118,36 @@ def test_weakref():
     gc.collect()
     assert tx1.sim is None
     assert tx2.sim is None
+
+
+def test_rotation_conserves_particles_within_boxsize():
+    f = pynbody.load("./testdata/g15784.lr.01024.gz")
+    f.physical_units()
+
+    # Check that positions are still within boxsize
+    def check_particles_are_within_boxsize(snap):
+        assert ((snap.d['x'].max() - snap.d['x'].min()) < snap.properties['boxsize'].in_units("kpc"))
+        assert ((snap.d['y'].max() - snap.d['y'].min()) < snap.properties['boxsize'].in_units("kpc"))
+        assert ((snap.d['z'].max() - snap.d['z'].min()) < snap.properties['boxsize'].in_units("kpc"))
+
+    # At load, everything is fine
+    check_particles_are_within_boxsize(f)
+
+    # Now load a halo and "face-on" it
+    h = f.halos()[1]
+    transform_chain = pynbody.analysis.angmom.faceon(h.g, disk_size="1 kpc", cen_size="1 kpc")
+    # check_particles_are_within_boxsize(f)   # TODO Currently breaks
+
+    # Understand which part of the transform is failing
+    transform_chain.revert()    # Revert the whole chain of transformations in face on routine
+
+    transform_chain.next_transformation.next_transformation.apply()     # Position centre shift
+    check_particles_are_within_boxsize(f)
+    transform_chain.next_transformation.next_transformation.revert()
+
+    transform_chain.next_transformation.apply()     # Velocity and position centre shift
+    check_particles_are_within_boxsize(f)
+    transform_chain.next_transformation.revert()
+
+    transform_chain.apply()     # Ang mom rotation and vel+pos shift
+    check_particles_are_within_boxsize(f)
